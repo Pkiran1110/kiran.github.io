@@ -4,9 +4,9 @@ const restartBtn = document.getElementById("restartBtn");
 const leftBtn = document.getElementById("leftBtn");
 const rightBtn = document.getElementById("rightBtn");
 
-let paddleWidth = 80;
-let paddleHeight = 10;
-let paddleX = (canvas.width - paddleWidth) / 2;
+let bowlWidth = 100;
+let bowlHeight = 30;
+let bowlX = (canvas.width - bowlWidth) / 2;
 
 let ballRadius = 10;
 let ballX, ballY, ballSpeed;
@@ -14,18 +14,19 @@ let rightPressed = false;
 let leftPressed = false;
 let score = 0;
 let gameOver = false;
+let caughtBalls = [];
 
 // Keyboard Controls
 document.addEventListener("keydown", keyDownHandler);
 document.addEventListener("keyup", keyUpHandler);
 
 // Touch Controls
-leftBtn.addEventListener("touchstart", () => leftPressed = true);
-leftBtn.addEventListener("touchend", () => leftPressed = false);
-rightBtn.addEventListener("touchstart", () => rightPressed = true);
-rightBtn.addEventListener("touchend", () => rightPressed = false);
+leftBtn.addEventListener("touchstart", () => (leftPressed = true));
+leftBtn.addEventListener("touchend", () => (leftPressed = false));
+rightBtn.addEventListener("touchstart", () => (rightPressed = true));
+rightBtn.addEventListener("touchend", () => (rightPressed = false));
 
-// Restart Button
+// Restart
 restartBtn.addEventListener("click", restartGame);
 
 function keyDownHandler(e) {
@@ -41,6 +42,7 @@ function keyUpHandler(e) {
 function initGame() {
   score = 0;
   ballSpeed = 3;
+  caughtBalls = [];
   gameOver = false;
   restartBtn.style.display = "none";
   document.getElementById("score").innerText = "Score: " + score;
@@ -48,18 +50,25 @@ function initGame() {
   draw();
 }
 
-function drawPaddle() {
+function drawBowl() {
   ctx.beginPath();
-  ctx.rect(paddleX, canvas.height - paddleHeight - 10, paddleWidth, paddleHeight);
-  ctx.fillStyle = "#00ffcc";
-  ctx.fill();
+  ctx.moveTo(bowlX, canvas.height - 15);
+  ctx.quadraticCurveTo(
+    bowlX + bowlWidth / 2,
+    canvas.height - bowlHeight - 10,
+    bowlX + bowlWidth,
+    canvas.height - 15
+  );
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = "#6fffe9";
+  ctx.stroke();
   ctx.closePath();
 }
 
-function drawBall() {
+function drawBall(x, y, color = "#f25f5c") {
   ctx.beginPath();
-  ctx.arc(ballX, ballY, ballRadius, 0, Math.PI * 2);
-  ctx.fillStyle = "#ff4081";
+  ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+  ctx.fillStyle = color;
   ctx.fill();
   ctx.closePath();
 }
@@ -67,10 +76,15 @@ function drawBall() {
 function moveBall() {
   ballY += ballSpeed;
 
-  if (ballY + ballRadius > canvas.height) {
-    if (ballX > paddleX && ballX < paddleX + paddleWidth) {
+  if (ballY + ballRadius > canvas.height - 15) {
+    if (ballX > bowlX && ballX < bowlX + bowlWidth) {
+      // Ball caught!
       score++;
       document.getElementById("score").innerText = "Score: " + score;
+      caughtBalls.push({
+        x: ballX,
+        y: canvas.height - 25 - Math.random() * 10,
+      });
       resetBall();
       ballSpeed += 0.2;
     } else {
@@ -84,29 +98,34 @@ function resetBall() {
   ballY = 0;
 }
 
-function movePaddle() {
-  if (rightPressed && paddleX < canvas.width - paddleWidth) paddleX += 7;
-  if (leftPressed && paddleX > 0) paddleX -= 7;
+function moveBowl() {
+  if (rightPressed && bowlX < canvas.width - bowlWidth) bowlX += 7;
+  if (leftPressed && bowlX > 0) bowlX -= 7;
 }
 
 function draw() {
   if (gameOver) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#ff4081";
-    ctx.font = "28px Arial";
+    ctx.fillStyle = "#f25f5c";
+    ctx.font = "28px Poppins";
     ctx.fillText("Game Over!", 120, 230);
     ctx.fillStyle = "#fff";
-    ctx.font = "20px Arial";
+    ctx.font = "20px Poppins";
     ctx.fillText("Final Score: " + score, 140, 270);
     restartBtn.style.display = "inline-block";
     return;
   }
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawPaddle();
-  drawBall();
+
+  // Draw caught balls in bowl
+  caughtBalls.forEach((b) => drawBall(b.x, b.y, "#ffe66d"));
+
+  drawBall(ballX, ballY);
+  drawBowl();
   moveBall();
-  movePaddle();
+  moveBowl();
+
   requestAnimationFrame(draw);
 }
 
@@ -114,5 +133,4 @@ function restartGame() {
   initGame();
 }
 
-// Start the game
 initGame();
