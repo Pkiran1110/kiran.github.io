@@ -1,6 +1,8 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const restartBtn = document.getElementById("restartBtn");
+const leftBtn = document.getElementById("leftBtn");
+const rightBtn = document.getElementById("rightBtn");
 
 let paddleWidth = 80;
 let paddleHeight = 10;
@@ -13,9 +15,17 @@ let leftPressed = false;
 let score = 0;
 let gameOver = false;
 
-// Controls
+// Keyboard Controls
 document.addEventListener("keydown", keyDownHandler);
 document.addEventListener("keyup", keyUpHandler);
+
+// Touch Controls
+leftBtn.addEventListener("touchstart", () => leftPressed = true);
+leftBtn.addEventListener("touchend", () => leftPressed = false);
+rightBtn.addEventListener("touchstart", () => rightPressed = true);
+rightBtn.addEventListener("touchend", () => rightPressed = false);
+
+// Restart Button
 restartBtn.addEventListener("click", restartGame);
 
 function keyDownHandler(e) {
@@ -62,7 +72,7 @@ function moveBall() {
       score++;
       document.getElementById("score").innerText = "Score: " + score;
       resetBall();
-      ballSpeed += 0.2; // increase difficulty
+      ballSpeed += 0.2;
     } else {
       gameOver = true;
     }
@@ -104,5 +114,5 @@ function restartGame() {
   initGame();
 }
 
-// Start game on load
+// Start the game
 initGame();
