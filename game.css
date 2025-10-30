@@ -3,6 +3,7 @@ body {
   background-color: #111;
   color: #fff;
   font-family: Arial, sans-serif;
+  user-select: none;
 }
 
 #gameCanvas {
@@ -17,9 +18,13 @@ body {
   margin-top: 10px;
 }
 
-#restartBtn {
+#controls {
   margin-top: 15px;
-  padding: 10px 20px;
+}
+
+#controls button {
+  margin: 5px;
+  padding: 12px 25px;
   font-size: 18px;
   border: none;
   background-color: #00ffcc;
@@ -29,6 +34,22 @@ body {
   transition: background 0.2s;
 }
 
-#restartBtn:hover {
+#controls button:hover {
   background-color: #00d6a8;
+}
+
+#restartBtn {
+  margin-top: 15px;
+  padding: 10px 20px;
+  font-size: 18px;
+  border: none;
+  background-color: #ff4081;
+  color: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+#restartBtn:hover {
+  background-color: #e73672;
 }
