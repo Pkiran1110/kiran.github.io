@@ -16,28 +16,28 @@ let score = 0;
 let gameOver = false;
 let caughtBalls = [];
 
-// Keyboard Controls
-document.addEventListener("keydown", keyDownHandler);
-document.addEventListener("keyup", keyUpHandler);
+// ✅ Ensure keyboard events always work (focus window)
+window.focus();
 
-// Touch Controls
+// ✅ Keyboard Controls (for desktop)
+window.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowRight" || e.key === "Right") rightPressed = true;
+  if (e.key === "ArrowLeft" || e.key === "Left") leftPressed = true;
+});
+
+window.addEventListener("keyup", (e) => {
+  if (e.key === "ArrowRight" || e.key === "Right") rightPressed = false;
+  if (e.key === "ArrowLeft" || e.key === "Left") leftPressed = false;
+});
+
+// ✅ Touch Controls (for mobile)
 leftBtn.addEventListener("touchstart", () => (leftPressed = true));
 leftBtn.addEventListener("touchend", () => (leftPressed = false));
 rightBtn.addEventListener("touchstart", () => (rightPressed = true));
 rightBtn.addEventListener("touchend", () => (rightPressed = false));
 
-// Restart
+// ✅ Restart Button
 restartBtn.addEventListener("click", restartGame);
-
-function keyDownHandler(e) {
-  if (e.key === "Right" || e.key === "ArrowRight") rightPressed = true;
-  if (e.key === "Left" || e.key === "ArrowLeft") leftPressed = true;
-}
-
-function keyUpHandler(e) {
-  if (e.key === "Right" || e.key === "ArrowRight") rightPressed = false;
-  if (e.key === "Left" || e.key === "ArrowLeft") leftPressed = false;
-}
 
 function initGame() {
   score = 0;
@@ -78,7 +78,6 @@ function moveBall() {
 
   if (ballY + ballRadius > canvas.height - 15) {
     if (ballX > bowlX && ballX < bowlX + bowlWidth) {
-      // Ball caught!
       score++;
       document.getElementById("score").innerText = "Score: " + score;
       caughtBalls.push({
