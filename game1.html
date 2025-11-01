@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Fruit Loader 5.1 — Perfected 🍎🚛</title>
+<style>
+  :root{
+    --sky-top:#bfe9ff; --sky-mid:#d8f6ff; --hill1:#88d070; --hill2:#6fc25a;
+    --ground:#efdf96; --track:#d6b86a;
+    --truck-body:#ffd97a; --truck-shade:#ffb703; --accent:#06d6a0; --text:#063349;
+  }
+  *{box-sizing:border-box;font-family:"Poppins",system-ui,Segoe UI,Roboto,Arial,sans-serif}
+  body{
+    margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background: linear-gradient(180deg,var(--sky-top),var(--sky-mid)); color:var(--text); padding:16px;
+  }
+  .wrap{ width:100%; max-width:980px; display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .banner{
+    width:100%; max-width:980px; background:linear-gradient(90deg,#fff4cc,#ffd7a6); border-radius:12px;
+    padding:10px 16px; display:flex; align-items:center; gap:12px; box-shadow:0 8px 18px rgba(0,0,0,0.08);
+  }
+  .banner .logo{ font-size:22px; }
+  .banner .subtitle{ color:#5c6b6f; font-weight:700; margin-left:6px; font-size:14px }
+  #gamePanel{
+    width:100%; max-width:860px; height:calc(100vh - 300px); max-height:760px; min-height:420px;
+    border-radius:14px; position:relative; overflow:hidden; box-shadow:0 18px 40px rgba(0,0,0,0.15);
+    background:transparent; display:flex; align-items:center; justify-content:center;
+  }
+  canvas{ width:100%; height:100%; display:block; border-radius:12px; }
+  .hud{ position:absolute; top:12px; left:12px; right:12px; display:flex; justify-content:space-between; pointer-events:none; }
+  .hud .box{ pointer-events:auto; background: rgba(255,255,255,0.95); color:var(--text); padding:7px 12px; border-radius:12px; font-weight:800; }
+  .controls{ display:flex; gap:10px; width:100%; justify-content:center; margin-top:6px; }
+  button{ background:var(--truck-body); border: none; padding:10px 16px; border-radius:10px; font-weight:800; cursor:pointer; box-shadow:0 10px 22px rgba(0,0,0,0.12); }
+  #mobileControls{ display:flex; gap:16px; margin-top:6px; justify-content:center; }
+  #mobileControls button{ background:var(--accent); color:#fff; font-size:22px; width:64px; height:64px; border-radius:50%; border:0; }
+  .truck-bar{ width:100%; max-width:860px; height:30px; background:rgba(0,0,0,0.08); border-radius:16px; overflow:hidden; margin-top:8px; }
+  .truck-load{ width:0%; height:100%; background: linear-gradient(90deg,#ffd166,#ffb703); transition:width .28s ease; }
+  .scoreboard{ width:100%; max-width:860px; display:flex; gap:12px; justify-content:space-around; margin-top:8px; }
+  .card{ background:rgba(255,255,255,0.95); color:var(--text); padding:8px 12px; border-radius:10px; font-weight:800; min-width:120px; text-align:center; }
+  @media(max-width:720px){ #mobileControls button{ width:56px; height:56px } button{ padding:8px 12px } }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="banner" aria-hidden="true">
+      <div class="logo">🍎 Fruit Loader</div>
+      <div class="subtitle">Farm Morning — Perfected Edition</div>
+    </div>
+
+    <div id="gamePanel" aria-label="Game area">
+      <canvas id="gameCanvas" width="480" height="720"></canvas>
+
+      <div class="hud" aria-hidden="true">
+        <div class="box" id="scoreBox">Score: 0</div>
+        <div class="box" id="livesBox">Lives: ❤️❤️❤️❤️❤️</div>
+      </div>
+
+      <div id="overlay" style="position:absolute;left:0;right:0;top:48%;text-align:center;transform:translateY(-50%);pointer-events:none;font-weight:900;color:var(--text);"></div>
+    </div>
+
+    <div class="controls">
+      <button id="startBtn">Start Game</button>
+      <button id="restartBtn" style="display:none">Restart</button>
+    </div>
+
+    <div class="truck-bar"><div id="truckLoad" class="truck-load"></div></div>
+
+    <div id="mobileControls">
+      <button id="leftBtn">⬅️</button>
+      <button id="rightBtn">➡️</button>
+    </div>
+
+    <div class="scoreboard" aria-hidden="true">
+      <div class="card" id="applesTotal">Apples: 0</div>
+      <div class="card" id="trucksTotal">Trucks Unloaded: 0</div>
+      <div class="card" id="speedLevel">Speed x1.00</div>
+    </div>
+  </div>
+
+<script>
+/* Fruit Loader 5.1 — Perfected
+ - Fixes: truck sits on ground always
+ - capacity increase +10 apples per unload
+ - apples stop spawning during unload
+ - improved visuals + smoke + animated apples + moving sun + banner
+*/
+
+// ---------- Audio ----------
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+const audioCtx = new AudioCtx();
+let bgGain = audioCtx.createGain(); bgGain.gain.value = 0.06; bgGain.connect(audioCtx.destination);
+let bgPlaying = false;
+function startBackground(){
+  if(bgPlaying) return; bgPlaying = true;
+  (function loop(){
+    if(!bgPlaying) return;
+    const now = audioCtx.currentTime;
+    [196,246.94,293.66].forEach((f,i)=>{
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = 'sine'; o.frequency.value = f * (1 + (Math.random()-0.5)*0.003);
+      g.gain.value = 0.005 + Math.random()*0.004;
+      o.connect(g); g.connect(bgGain);
+      o.start(now + i*0.08); o.stop(now + 1.0);
+    });
+    setTimeout(loop, 900 + Math.random()*300);
+  })();
+}
+function stopBackground(){ bgPlaying = false; }
+
+function playPlop(){
+  const now = audioCtx.currentTime;
+  const g = audioCtx.createGain(); g.gain.value = 0.14; g.connect(audioCtx.destination);
+  const o = audioCtx.createOscillator(); o.type = 'triangle';
+  o.frequency.setValueAtTime(460 + Math.random()*50, now);
+  o.frequency.exponentialRampToValueAtTime(160, now + 0.24);
+  o.connect(g); g.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
+  o.start(now); o.stop(now + 0.28);
+}
+function playVroom(){
+  const now = audioCtx.currentTime;
+  const g = audioCtx.createGain(); g.gain.value = 0.14; g.connect(audioCtx.destination);
+  const o = audioCtx.createOscillator(); o.type = 'sawtooth';
+  o.frequency.setValueAtTime(160, now); o.frequency.exponentialRampToValueAtTime(45, now + 0.85);
+  const f = audioCtx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 900;
+  o.connect(f); f.connect(g); o.start(now); o.stop(now + 0.9);
+}
+function playDing(){
+  const now = audioCtx.currentTime;
+  const g = audioCtx.createGain(); g.gain.value = 0.06; g.connect(audioCtx.destination);
+  const o = audioCtx.createOscillator(); o.type = 'sine'; o.frequency.value = 880;
+  o.connect(g); o.start(now); o.stop(now + 0.12);
+}
+function resumeAudioIfNeeded(){ if(audioCtx.state === 'suspended') audioCtx.resume(); }
+document.addEventListener('click', resumeAudioIfNeeded, { once:true });
+document.addEventListener('touchstart', resumeAudioIfNeeded, { once:true });
+
+// ---------- Canvas and scaling ----------
+const panel = document.getElementById('gamePanel');
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const BASE_W = 480, BASE_H = 720;
+canvas.width = BASE_W; canvas.height = BASE_H;
+let scale = 1;
+function resizeCanvas(){
+  const rect = panel.getBoundingClientRect();
+  scale = Math.min(rect.width / BASE_W, rect.height / BASE_H);
+  canvas.style.width = (BASE_W * scale) + 'px';
+  canvas.style.height = (BASE_H * scale) + 'px';
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// ---------- Game variables ----------
+let apples = [];
+let score = 0;
+let applesTotal = 0;
+let trucksUnloaded = 0;
+let lives = 5;
+let loadCount = 0;
+let capacity = 15;           // starting capacity
+let speedMultiplier = 1.0;
+let spawnProbability = 0.012;
+let baseSpeedMin = 0.9, baseSpeedMax = 1.8;
+
+const groundTop = BASE_H - 100;          // top Y of ground strip
+const wheelCenterY = groundTop + 14;     // wheel center Y
+const truckHomeX = (BASE_W - 140) / 2;
+const truckHomeY = wheelCenterY - 6;     // truck.y so that wheelY = truck.y + 6 = wheelCenterY
+
+const truck = {
+  x: truckHomeX,
+  y: truckHomeY,
+  width: 140,
+  height: 64,
+  wheelR: 14,
+  cabinW: 52,
+  wheelAngle: 0
+};
+
+let moveLeft = false, moveRight = false, gameActive = false, unloading = false, animationId = null;
+let sunPos = 0;
+let smokeParticles = [];
+
+// DOM elements
+const scoreBox = document.getElementById('scoreBox');
+const livesBox = document.getElementById('livesBox');
+const truckLoadBar = document.getElementById('truckLoad');
+const startBtn = document.getElementById('startBtn');
+const restartBtn = document.getElementById('restartBtn');
+const overlay = document.getElementById('overlay');
+const leftBtn = document.getElementById('leftBtn');
+const rightBtn = document.getElementById('rightBtn');
+const applesTotalEl = document.getElementById('applesTotal');
+const trucksTotalEl = document.getElementById('trucksTotal');
+const speedLevelEl = document.getElementById('speedLevel');
+
+// ---------- Helpers ----------
+function rand(min,max){ return Math.random()*(max-min)+min; }
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+function updateHUD(){
+  scoreBox.textContent = 'Score: ' + score;
+  livesBox.innerHTML = 'Lives: ' + '❤️'.repeat(lives);
+  truckLoadBar.style.width = Math.min((loadCount / capacity) * 100, 100) + '%';
+  applesTotalEl.textContent = 'Apples: ' + applesTotal;
+  trucksTotalEl.textContent = 'Trucks Unloaded: ' + trucksUnloaded;
+  speedLevelEl.textContent = 'Speed x' + speedMultiplier.toFixed(2);
+}
+
+// ---------- Spawn ----------
+function spawnApple(){
+  const x = rand(20, BASE_W - 20);
+  const r = 14;
+  const speed = rand(baseSpeedMin, baseSpeedMax) * speedMultiplier;
+  apples.push({ x, y: -r*2, r, speed, rot: 0, rotSpeed: rand(-0.08, 0.08), shine: Math.random()*Math.PI*2 });
+}
+
+// ---------- Drawing helpers ----------
+function drawSky(){
+  const g = ctx.createLinearGradient(0, 0, 0, BASE_H);
+  g.addColorStop(0, '#dff7ff'); g.addColorStop(0.5, '#e8fbf2'); g.addColorStop(1, '#cfe9b9');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, BASE_W, BASE_H);
+}
+function drawSun(){
+  const x = 40 + sunPos * (BASE_W - 80);
+  const y = 70 + Math.sin(sunPos * Math.PI) * 12;
+  const r = 36;
+  const g = ctx.createRadialGradient(x, y, r*0.2, x, y, r*1.6);
+  g.addColorStop(0, '#fff1a8'); g.addColorStop(0.5, '#ffe59b'); g.addColorStop(1, 'rgba(255,229,128,0.05)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+}
+function drawCloud(cx, cy, s){
+  ctx.fillStyle = 'rgba(255,255,255,0.94)';
+  ctx.beginPath();
+  ctx.arc(cx, cy, 18*s, 0, Math.PI*2);
+  ctx.arc(cx+22*s, cy-6*s, 22*s, 0, Math.PI*2);
+  ctx.arc(cx+44*s, cy, 18*s, 0, Math.PI*2);
+  ctx.fill();
+}
+function drawHills(){
+  ctx.fillStyle = '#8ccf6a';
+  ctx.beginPath(); ctx.ellipse(BASE_W*0.22, BASE_H*0.72, 320, 110, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#7fc25e';
+  ctx.beginPath(); ctx.ellipse(BASE_W*0.72, BASE_H*0.78, 320, 120, 0, 0, Math.PI*2); ctx.fill();
+}
+function drawGround(){
+  ctx.fillStyle = '#efdf96'; ctx.fillRect(0, BASE_H - 100, BASE_W, 100);
+  ctx.fillStyle = '#d6b86a'; ctx.fillRect(0, BASE_H - 84, BASE_W, 34);
+}
+
+function drawApple(a){
+  ctx.save();
+  ctx.translate(a.x, a.y);
+  a.rot += a.rotSpeed;
+  ctx.rotate(a.rot);
+  ctx.beginPath(); ctx.fillStyle = '#ff4d4d'; ctx.arc(0,0,a.r,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.fillStyle = 'rgba(255,255,255,0.26)';
+  const sx = Math.cos(a.shine + performance.now()/900) * a.r * 0.35;
+  ctx.ellipse(-a.r*0.34 + sx*0.2, -a.r*0.42, a.r*0.38, a.r*0.16, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.fillStyle = '#2f9e49'; ctx.ellipse(a.r*0.48, -a.r*0.86, a.r*0.36, a.r*0.14, -0.9, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawWheel(cx, cy, R, angle){
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(angle);
+  ctx.beginPath(); ctx.fillStyle = '#222'; ctx.arc(0,0,R,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.fillStyle = '#888'; ctx.arc(0,0,R*0.45,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 2;
+  for(let i=0;i<6;i++){ ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,R*0.78); ctx.stroke(); ctx.rotate(Math.PI/3); }
+  ctx.restore();
+}
+
+function drawSmoke(){
+  for(let i = smokeParticles.length - 1; i >= 0; i--){
+    const s = smokeParticles[i];
+    s.life += 1;
+    s.x += -1.2 + Math.random()*0.9;
+    s.y -= 0.6 + Math.random()*0.6;
+    const alpha = Math.max(0, 0.5 - s.life * 0.02);
+    ctx.beginPath();
+    ctx.fillStyle = 'rgba(200,200,200,' + alpha + ')';
+    ctx.arc(s.x, s.y, s.size * (0.7 + s.life*0.02), 0, Math.PI*2);
+    ctx.fill();
+    if(alpha <= 0.02) smokeParticles.splice(i,1);
+  }
+}
+
+function drawTruck(){
+  ctx.save();
+  const contX = truck.x, contY = truck.y - truck.height, contW = truck.width, contH = truck.height;
+  const cg = ctx.createLinearGradient(contX, contY, contX + contW, contY + contH);
+  cg.addColorStop(0, '#ffd97a'); cg.addColorStop(1, '#ffb86a');
+  ctx.fillStyle = cg; roundRect(ctx, contX, contY, contW, contH, 10, true);
+
+  ctx.fillStyle = 'rgba(255,160,0,0.12)'; ctx.fillRect(contX + contW*0.5, contY + 8, contW*0.4 - 8, contH - 16);
+
+  const cabX = contX - truck.cabinW, cabY = contY + 8, cabW = truck.cabinW, cabH = contH - 12;
+  const cabGrad = ctx.createLinearGradient(cabX, cabY, cabX + cabW, cabY + cabH);
+  cabGrad.addColorStop(0, '#ffd27b'); cabGrad.addColorStop(1, '#ffcc66');
+  ctx.fillStyle = cabGrad; roundRect(ctx, cabX, cabY, cabW, cabH, 8, true);
+
+  ctx.fillStyle = '#bfefff'; ctx.fillRect(cabX + 10, cabY + 12, cabW - 20, 22);
+  ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(cabX + 12, cabY + 14, 8, 6);
+
+  ctx.fillStyle = '#ffdfb3'; ctx.fillRect(contX + contW - 12, contY + 10, 8, contH - 20);
+  ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(contX + 6, contY + 6, contW - 12, 6);
+
+  const wheelY = truck.y + 6;
+  drawWheel(truck.x + 22, wheelY, truck.wheelR, truck.wheelAngle);
+  drawWheel(truck.x + truck.width - 22, wheelY, truck.wheelR, truck.wheelAngle);
+
+  if(moveLeft || moveRight || unloading){
+    if(Math.random() < 0.22) smokeParticles.push({ x: cabX - 6, y: cabY + 6, life: 0, size: rand(8,14) });
+  }
+  ctx.restore();
+}
+
+// polyfill roundRect
+if(!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r){
+    if(typeof r === 'number') r = [r,r,r,r];
+    this.beginPath();
+    this.moveTo(x + r[0], y);
+    this.arcTo(x + w, y, x + w, y + h, r[1]);
+    this.arcTo(x + w, y + h, x, y + h, r[2]);
+    this.arcTo(x, y + h, x, y, r[3]);
+    this.arcTo(x, y, x + w, y, r[0]);
+    this.closePath();
+  };
+}
+function roundRect(ctx,x,y,w,h,r,fill){ if(!r) r=6; ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); if(fill) ctx.fill(); }
+
+// ---------- Main loop ----------
+function step(){
+  // sun progress
+  sunPos += 0.0007; if(sunPos > 1) sunPos = 0;
+
+  // spawn only if not unloading
+  if(!unloading && Math.random() < spawnProbability) spawnApple();
+
+  // update apples
+  for(let i = apples.length - 1; i >= 0; i--){
+    const a = apples[i];
+    a.y += a.speed;
+    a.rot += a.rotSpeed;
+    if(a.y + a.r >= truck.y - truck.height && a.x >= truck.x && a.x <= truck.x + truck.width){
+      apples.splice(i,1);
+      score++; loadCount++; applesTotal++; playPlop(); updateHUD();
+      if(loadCount >= capacity && !unloading) triggerUnload();
+    } else if(a.y - a.r > BASE_H){
+      apples.splice(i,1);
+      lives--; updateHUD();
+      if(lives <= 0) return endGame();
+    }
+  }
+
+  // truck controls (not unloading)
+  if(!unloading){
+    if(moveLeft){ truck.x = clamp(truck.x - 6, 8, BASE_W - truck.width - 8); truck.wheelAngle -= 0.26; }
+    if(moveRight){ truck.x = clamp(truck.x + 6, 8, BASE_W - truck.width - 8); truck.wheelAngle += 0.26; }
+  } else {
+    truck.wheelAngle += 0.8;
+  }
+
+  draw();
+  animationId = requestAnimationFrame(step);
+}
+
+function draw(){
+  ctx.clearRect(0,0,BASE_W,BASE_H);
+  drawSky(); drawSun();
+  drawCloud(120 + Math.sin(performance.now()/9000)*30, 90 + Math.cos(performance.now()/7000)*12, 1.0);
+  drawCloud(320 + Math.cos(performance.now()/8000)*22, 70 + Math.sin(performance.now()/12000)*10, 1.2);
+  drawHills(); drawGround();
+  for(const a of apples) drawApple(a);
+  drawSmoke();
+  ctx.fillStyle = 'rgba(255,255,255,0.03)'; ctx.fillRect(0, BASE_H - 80, BASE_W, 6);
+  drawTruck();
+}
+
+// ---------- Unload sequence (fixed return + bounce + capacity increase) ----------
+function triggerUnload(){
+  unloading = true; gameActive = false; overlay.textContent = 'Truck full — Unloading...';
+  if(animationId) cancelAnimationFrame(animationId);
+  playVroom();
+
+  const framesOut = 54;
+  const startX = truck.x, startY = truck.y;
+  const offX = BASE_W + 220, offY = -260;
+  let f = 0;
+  function driveOff(){
+    f++;
+    const t = easeOutCubic(Math.min(1, f / framesOut));
+    truck.x = startX + (offX - startX) * t;
+    truck.y = startY + (offY - startY) * t;
+    truck.wheelAngle += 0.9;
+    draw();
+    if(f < framesOut) requestAnimationFrame(driveOff);
+    else {
+      // reward and adjustments after unload
+      lives = Math.min(lives + 1, 10);
+      trucksUnloaded++;
+      // increase capacity by +10 (user request)
+      capacity = capacity + 10;
+      // speed increase +6%
+      speedMultiplier *= 1.06;
+      loadCount = 0;
+      truckLoadBar.style.width = '0%';
+      updateHUD();
+      playDing();
+      setTimeout(() => driveIn(), 900);
+    }
+  }
+
+  function driveIn(){
+    playVroom();
+    const framesIn = 54;
+    let g = 0;
+    const startXin = -260, startYin = BASE_H + 120;
+    truck.x = startXin; truck.y = startYin;
+    function stepIn(){
+      g++;
+      const t = easeOutCubic(Math.min(1, g / framesIn));
+      truck.x = startXin + (truckHomeX - startXin) * t;
+      truck.y = startYin + (truckHomeY - startYin) * t;
+      truck.wheelAngle += 1.0;
+      draw();
+      if(g < framesIn) requestAnimationFrame(stepIn);
+      else bounceTruck();
+    }
+    stepIn();
+  }
+
+  driveOff();
+}
+
+function bounceTruck(){
+  let b = 0;
+  const frames = 28;
+  function frame(){
+    b++;
+    const t = b / frames;
+    const bounce = Math.sin(t * Math.PI) * (1 - t) * 14; // less lift for realism
+    truck.y = truckHomeY - bounce;
+    draw();
+    if(b < frames) requestAnimationFrame(frame);
+    else {
+      truck.y = truckHomeY;
+      unloading = false;
+      gameActive = true;
+      updateHUD();
+      startBackground();
+      // resume main loop
+      step();
+    }
+  }
+  frame();
+}
+
+function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+
+// ---------- End game ----------
+function endGame(){
+  if(animationId) cancelAnimationFrame(animationId);
+  gameActive = false; overlay.textContent = '';
+  ctx.fillStyle = 'rgba(0,0,0,0.46)'; ctx.fillRect(0,0,BASE_W,BASE_H);
+  ctx.fillStyle = '#fff'; ctx.font = '30px Poppins'; ctx.fillText('Game Over!', 130, 300);
+  ctx.font = '18px Poppins'; ctx.fillText('Apples Collected: ' + score, 120, 340);
+  restartBtn.style.display = 'inline-block';
+  stopBackground();
+}
+
+// ---------- Controls & UI ----------
+function startGame(){
+  resumeAudioIfNeeded();
+  startBackground();
+  apples = []; score = 0; applesTotal = 0; trucksUnloaded = 0;
+  lives = 5; loadCount = 0; capacity = 15; speedMultiplier = 1.0;
+  spawnProbability = 0.012; baseSpeedMin = 0.9; baseSpeedMax = 1.8;
+  truck.x = truckHomeX; truck.y = truckHomeY; truck.wheelAngle = 0;
+  updateHUD(); overlay.textContent = ''; startBtn.style.display = 'none'; restartBtn.style.display = 'none';
+  gameActive = true; unloading = false;
+  setTimeout(()=> spawnProbability = Math.min(0.038, spawnProbability + 0.006), 38000);
+  step();
+}
+
+function restartGame(){ startGame(); restartBtn.style.display = 'none'; }
+
+startBtn.addEventListener('click', startGame);
+restartBtn.addEventListener('click', restartGame);
+
+// keyboard
+window.addEventListener('keydown', (e) => { if(e.key === 'ArrowLeft') moveLeft = true; if(e.key === 'ArrowRight') moveRight = true; });
+window.addEventListener('keyup', (e) => { if(e.key === 'ArrowLeft') moveLeft = false; if(e.key === 'ArrowRight') moveRight = false; });
+
+// touch & pointer
+leftBtn.addEventListener('touchstart', (ev) => { ev.preventDefault(); moveLeft = true; });
+leftBtn.addEventListener('touchend', () => moveLeft = false);
+rightBtn.addEventListener('touchstart', (ev) => { ev.preventDefault(); moveRight = true; });
+rightBtn.addEventListener('touchend', () => moveRight = false);
+leftBtn.addEventListener('pointerdown', ()=> moveLeft = true); leftBtn.addEventListener('pointerup', ()=> moveLeft = false);
+rightBtn.addEventListener('pointerdown', ()=> moveRight = true); rightBtn.addEventListener('pointerup', ()=> moveRight = false);
+
+// HUD loop
+function hudLoop(){ updateHUD(); requestAnimationFrame(hudLoop); }
+hudLoop();
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+updateHUD();
+</script>
+</body>
+</html>
