@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kiran's Sweet Games 🍬</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #ffe0b2, #ffcc80);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      color: #3a1f04;
+    }
+
+    /* Top Title Bar */
+    header {
+      background-color: #3a1f04;
+      color: #fff;
+      padding: 15px 20px;
+      text-align: center;
+      font-size: 1.6rem;
+      font-weight: 600;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+    }
+
+    /* Tab Navigation Bar */
+    nav {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      background-color: #5c4033;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+    }
+
+    nav button {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1rem;
+      padding: 12px 25px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    nav button:hover {
+      background-color: #3a1f04;
+    }
+
+    /* Game Gallery Section */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      padding: 30px;
+      justify-items: center;
+      align-items: center;
+    }
+
+    .game-card {
+      background-color: #fff8e1;
+      border-radius: 15px;
+      box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      width: 100%;
+      max-width: 300px;
+      text-align: center;
+    }
+
+    .game-card:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 15px rgba(0,0,0,0.3);
+    }
+
+    .game-card img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      border-bottom: 3px solid #3a1f04;
+    }
+
+    .game-card h3 {
+      padding: 15px 10px;
+      font-size: 1.2rem;
+      color: #4b2e05;
+    }
+
+    /* Fixed Bottom Quote Bar */
+    footer {
+      background-color: #3a1f04;
+      color: #fff8e1;
+      text-align: center;
+      padding: 10px;
+      font-size: 1rem;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      box-shadow: 0 -3px 8px rgba(0,0,0,0.3);
+      z-index: 10;
+    }
+
+    /* Adjust for footer height */
+    body::after {
+      content: "";
+      display: block;
+      height: 50px;
+    }
+
+    @media (max-width: 600px) {
+      header {
+        font-size: 1.3rem;
+      }
+      nav button {
+        padding: 10px 15px;
+        font-size: 0.9rem;
+      }
+      main {
+        padding: 15px;
+        gap: 15px;
+      }
+      .game-card img {
+        height: 150px;
+      }
+      .game-card h3 {
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>Games Hub</header>
+
+  <nav>
+    <button onclick="navigate('home')">Home</button>
+    <button onclick="navigate('about')">About</button>
+    <button onclick="navigate('services')">Services</button>
+    <button onclick="navigate('contact')">Contact</button>
+  </nav>
+
+  <main>
+    <div class="game-card" onclick="openGame('game2.html')">
+      <img src="chocolate.png" alt="Chocolate Puzzle" />
+      <h3>Chocolate Box Puzzle 🍫</h3>
+    </div>
+
+    <div class="game-card" onclick="openGame('game2.html')">
+      <img src="Ball.png" />
+      <h3>Catch the Ball</h3>
+    </div>
+
+   <div class="game-card" onclick="openGame('game2.html')">
+      <img src="chocolate.png" />
+      <h3>Sweet Match</h3>
+    </div>
+
+  </main>
+
+  <footer>
+    “Life is like a box of chocolates — you never know what game you’ll get.” 🍫
+  </footer>
+
+  <script>
+    function openGame(url) {
+      // ✅ Opens your game page in the same tab (best for GitHub Pages)
+      window.location.href = url;
+    }
+
+  
+  </script>
+</body>
+</html>
